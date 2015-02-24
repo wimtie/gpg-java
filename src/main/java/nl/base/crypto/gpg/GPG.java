@@ -19,9 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Thin Java wrapper for GPG command line tool.
- * 
+ *
  */
 public class GPG {
 
@@ -29,7 +29,7 @@ public class GPG {
 
 	private static final Pattern FINGERPRINT_PATTERN = Pattern.compile("\\s*Key fingerprint = ([A-F0-9 ]*).*",
 			Pattern.MULTILINE);
-	
+
 	private final String version;
 	private File publicKeyRingFile = null;
 	private File secretKeyRingFile = null;
@@ -63,7 +63,7 @@ public class GPG {
 	/**
 	 * Create a tool which uses specified keyring files, as opposed to the gpg default ~/.gnupg based files.
 	 * NB: this will fall back to default keyrings if either one of the parameters is null.
-	 * 
+	 *
 	 * @param publicKeyringFile
 	 * @param secretKeyringFile
 	 * @throws IOException
@@ -86,9 +86,9 @@ public class GPG {
 
 	/**
 	 * Verify that gpg is installed and available on PATH.
-	 * 
+	 *
 	 * @return version string.
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	private String checkVersionInfo() throws IOException {
@@ -125,7 +125,7 @@ public class GPG {
 
 	/**
 	 * Run GPG
-	 * 
+	 *
 	 * @param command
 	 * @return InputStream with output in gpg's stdout
 	 * @throws IOException
@@ -144,7 +144,7 @@ public class GPG {
 
 	/**
 	 * Run GPG and pipe data to process
-	 * 
+	 *
 	 * @param command
 	 * @param data
 	 * @return InputStream with output in gpg's stdout
@@ -168,7 +168,7 @@ public class GPG {
 
 	/**
 	 * Run GPG and pipe data to process
-	 * 
+	 *
 	 * @param command
 	 * @param data
 	 * @return InputStream with output in gpg's stdout
@@ -193,7 +193,7 @@ public class GPG {
 
 	/**
 	 * Get the version string (first line of gpg --version).
-	 * 
+	 *
 	 * @return
 	 */
 	public String getGPGVersion() {
@@ -202,7 +202,7 @@ public class GPG {
 
 	/**
 	 * Import key from file to gpg keychain.
-	 * 
+	 *
 	 * @param file file containing pgp key
 	 * @throws IOException
 	 */
@@ -216,7 +216,7 @@ public class GPG {
 
 	/**
 	 * Import key bytes to gpg keychain.
-	 * 
+	 *
 	 * @param key key represented as bytes
 	 * @throws IOException
 	 */
@@ -230,7 +230,7 @@ public class GPG {
 
 	/**
 	 * Import key bytes from stream to gpg keychain.
-	 * 
+	 *
 	 * @param key key represented as bytes
 	 * @throws IOException
 	 */
@@ -246,7 +246,7 @@ public class GPG {
 
 	/**
 	 * Delete public key from gpg keychain by fingerprint
-	 * 
+	 *
 	 * @param hexFingerPrint hex encoded fingerprint of public key to delete
 	 */
 	public void deletePublicKey(String hexFingerPrint) throws IOException {
@@ -259,7 +259,7 @@ public class GPG {
 
 	/**
 	 * Delete secret key from gpg keychain by fingerprint
-	 * 
+	 *
 	 * @param hexFingerPrint hex encoded fingerprint of secret key to delete
 	 * @throws IOException
 	 */
@@ -274,7 +274,7 @@ public class GPG {
 	/**
 	 * Check whether gpg store has specified key. We have to check this with exceptions since gpg gives
 	 * return code 2 in the case we don't have the key.
-	 * 
+	 *
 	 * @param hexFingerPrint hex encoded key fingerprint.
 	 * @return true if store contains key, false otherwise
 	 * @throws IOException
@@ -292,7 +292,7 @@ public class GPG {
 
 	/**
 	 * Get the fingerprint for a keyring file.
-	 * 
+	 *
 	 * @param file
 	 * @return
 	 * @throws IOException
@@ -304,7 +304,7 @@ public class GPG {
 
 	/**
 	 * Get the fingerprint for keyring bytes.
-	 * 
+	 *
 	 * @param file
 	 * @return
 	 * @throws IOException
@@ -316,7 +316,7 @@ public class GPG {
 
 	/**
 	 * Get the fingerprint for keyring bytes.
-	 * 
+	 *
 	 * @param inputStream
 	 * @return
 	 * @throws IOException
@@ -340,7 +340,7 @@ public class GPG {
 
 	/**
 	 * Encrypt contents of a file to stream.
-	 * 
+	 *
 	 * @param input the file to encrypt.
 	 * @param hexFingerPrint fingerprint of encryption public key
 	 * @return inputstream with ciphertext
@@ -352,7 +352,7 @@ public class GPG {
 
 	/**
 	 * Encrypt contents of a file to file.
-	 * 
+	 *
 	 * @param input the file to encrypt.
 	 * @param hexFingerPrint fingerprint of encryption public key
 	 * @throws IOException
@@ -363,7 +363,7 @@ public class GPG {
 
 	/**
 	 * Encrypt a bytearray.
-	 * 
+	 *
 	 * @param bytes cleartext bytes.
 	 * @param hexFingerPrint fingerprint of encryption public key
 	 * @return InputStream providing ciphertext of bytes.
@@ -375,7 +375,7 @@ public class GPG {
 
 	/**
 	 * Encrypt a bytearray to file.
-	 * 
+	 *
 	 * @param bytes cleartext bytes.
 	 * @param output file to write ciphertext to
 	 * @param hexFingerPrint fingerprint of encryption public key
@@ -386,8 +386,20 @@ public class GPG {
 	}
 
 	/**
+	 * Encrypt an inputstream to file.
+	 *
+	 * @param bytes cleartext bytes.
+	 * @param output file to write ciphertext to
+	 * @param hexFingerPrint fingerprint of encryption public key
+	 * @throws IOException
+	 */
+	public void encrypt(InputStream clear, File output, String hexFingerPrint) throws IOException {
+		runGPG(Arrays.asList("-r", hexFingerPrint, "--encrypt", "--output", output.getAbsolutePath()), clear);
+	}
+
+	/**
 	 * Decrypt input file to stdout.
-	 * 
+	 *
 	 * @param input file with PGP encrypted data.
 	 * @param passphrase passphrase for the secret key
 	 * @return InputStream of cleartext
@@ -399,7 +411,7 @@ public class GPG {
 
 	/**
 	 * Decrypt input file to output file
-	 * 
+	 *
 	 * @param input file with PGP encrypted data.
 	 * @param output file to write cleartext to.
 	 * @param passphrase passphrase for the secret key
