@@ -7,16 +7,20 @@ import java.io.InputStream;
 import java.nio.file.Files;
 
 import junit.framework.TestCase;
+import nl.base.crypto.gpg.GPG.GPGException;
 
 import org.apache.commons.io.IOUtils;
 
 public class TestGPG extends TestCase {
 
+	private static final String SECKEY_ASC_RESOURCE_FILENAME = "seckey.asc";
+	private static final String PUBKEY_ASC_RESOURCE_FILENAME = "pubkey.asc";
 	private static final String JUNIT_PASSPHRASE = "JUnitPassphrase";
+	private static final String JUNIT_KEYPAIR_FINGERPRINT = "AB98FD9C260FD9F4E323BB8E1084E2961A0D3FC6";
 
 	public void testHaveKey() throws IOException {
 		GPG tool = getNewJUnitGPGTool();
-		try (InputStream is = JUnitUtil.getResourceInputStream("pubkey.asc")) {
+		try (InputStream is = JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME)) {
 			assertTrue("Key was not successfully imported / haveKey doesn't see it",
 					tool.havePublicKey(tool.getFingerPrint(is)));
 		}
@@ -40,6 +44,21 @@ public class TestGPG extends TestCase {
 				IOUtils.toString(decryptStream));
 	}
 
+	public void testDeleteKey() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		try {
+			tool.deletePublicKey(getJunitKeyringFingerPrint(tool));
+			throw new IllegalStateException("deletePublicKey should have thrown an error, but it didn't");
+		} catch (GPGException e) {
+			if(!e.getMessage().contains("gpg: there is a secret key for public key")) {
+				throw new IllegalStateException("Wrong exception", e);
+			}
+		}
+		tool.deleteSecretKey(getJunitKeyringFingerPrint(tool));
+		// Now we should be allowed to delete public key
+		tool.deletePublicKey(getJunitKeyringFingerPrint(tool));
+	}
+
 	/**
 	 *
 	 * Utility method to get a GPG instance with clean keyrings.
@@ -47,8 +66,8 @@ public class TestGPG extends TestCase {
 	 * 	@return GPG instance with default JUnit keyrings imported
 	 */
 	private GPG getNewJUnitGPGTool() {
-		try (InputStream pkis = JUnitUtil.getResourceInputStream("pubkey.asc");
-				InputStream skis = JUnitUtil.getResourceInputStream("seckey.asc")) {
+		try (InputStream pkis = JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME);
+				InputStream skis = JUnitUtil.getResourceInputStream(SECKEY_ASC_RESOURCE_FILENAME)) {
 			GPG tool = new GPG(File.createTempFile("JUnit", "pkr"), File.createTempFile("JUnit", "skr"));
 			tool.importKey(pkis);
 			tool.importKey(skis);
@@ -59,7 +78,7 @@ public class TestGPG extends TestCase {
 	}
 
 	private String getJunitKeyringFingerPrint(GPG gpg) {
-		try (InputStream pkis = JUnitUtil.getResourceInputStream("pubkey.asc")) {
+		try (InputStream pkis = JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME)) {
 			return gpg.getFingerPrint(pkis);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
