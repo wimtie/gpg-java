@@ -20,7 +20,7 @@ public class TestGPG extends TestCase {
 			assertTrue("Key was not successfully imported / haveKey doesn't see it",
 					tool.havePublicKey(tool.getFingerPrint(is)));
 		}
-		assertFalse("Havekey sees a key that it shouldn't.", tool.havePublicKey("foobar"));
+		assertFalse("haveKey() sees a key that it shouldn't.", tool.havePublicKey("foobar"));
 	}
 
 	public void testEncrypt() throws IOException {
