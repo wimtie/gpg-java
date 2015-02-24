@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import nl.base.crypto.gpg.GPGKeyListParser.GPGKeyInfo;
+
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -201,6 +203,18 @@ public class GPG {
 		return this.version;
 	}
 
+	public List<GPGKeyInfo> getPublicKeyInfoList() throws IOException {
+		ArrayList<GPGKeyInfo> res = new ArrayList<GPGKeyInfo>();
+		String rawList = IOUtils.toString(runGPG("--fingerprint"));
+		return GPGKeyListParser.parse(rawList);
+	}
+
+	public List<GPGKeyInfo> getSecretKeyInfoList() throws IOException {
+		ArrayList<GPGKeyInfo> res = new ArrayList<GPGKeyInfo>();
+		String rawList = IOUtils.toString(runGPG("--list-secret-keys", "--with-fingerprint"));
+		return GPGKeyListParser.parse(rawList);
+	}
+
 	/**
 	 * Import key from file to gpg keychain.
 	 *
@@ -208,10 +222,6 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public void importKey(File file) throws IOException {
-		if (haveKey(getFingerPrint(file))) {
-			// Skip keys we have, gpg throws exit code 2 (error) in this case.
-			return;
-		}
 		runGPG("--import", file.getAbsolutePath());
 	}
 
@@ -222,10 +232,6 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public void importKey(byte[] key) throws IOException {
-		if (haveKey(getFingerPrint(key))) {
-			// Skip keys we have, gpg throws exit code 2 (error) in this case.
-			return;
-		}
 		runGPG(Arrays.asList("--import"), key);
 	}
 
@@ -236,13 +242,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public void importKey(InputStream key) throws IOException {
-		// Consume the stream, we need it twice.
-		byte[] keybytes = IOUtils.toByteArray(key);
-		if (haveKey(getFingerPrint(keybytes))) {
-			// Skip keys we have, gpg throws exit code 2 (error) in this case.
-			return;
-		}
-		runGPG(Arrays.asList("--import"), keybytes);
+		runGPG(Arrays.asList("--import"), key);
 	}
 
 	/**
@@ -251,7 +251,7 @@ public class GPG {
 	 * @param hexFingerPrint hex encoded fingerprint of public key to delete
 	 */
 	public void deletePublicKey(String hexFingerPrint) throws IOException {
-		if (!haveKey(hexFingerPrint)) {
+		if (!havePublicKey(hexFingerPrint)) {
 			// Skip keys we don't have, gpg throws an error in these cases.
 			return;
 		}
@@ -265,7 +265,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public void deleteSecretKey(String hexFingerPrint) throws IOException {
-		if (!haveKey(hexFingerPrint)) {
+		if (!havePublicKey(hexFingerPrint)) {
 			// Skip keys we don't have, gpg throws an error in these cases.
 			return;
 		}
@@ -280,9 +280,28 @@ public class GPG {
 	 * @return true if store contains key, false otherwise
 	 * @throws IOException
 	 */
-	public boolean haveKey(String hexFingerPrint) throws IOException {
+	public boolean havePublicKey(String hexFingerPrint) throws IOException {
 		try {
 			runGPG("--fingerprint", hexFingerPrint);
+			// No error means we have the key.
+			return true;
+		} catch (GPGException e) {
+			// TODO: parse error msg?
+			return false;
+		}
+	}
+
+	/**
+	 * Check whether gpg store has specified key. We have to check this with exceptions since gpg gives
+	 * return code 2 in the case we don't have the key.
+	 *
+	 * @param hexFingerPrint hex encoded key fingerprint.
+	 * @return true if store contains key, false otherwise
+	 * @throws IOException
+	 */
+	public boolean haveSecretKey(String hexFingerPrint) throws IOException {
+		try {
+			runGPG("--list-secret-keys", "--fingerprint", hexFingerPrint);
 			// No error means we have the key.
 			return true;
 		} catch (GPGException e) {
@@ -422,6 +441,17 @@ public class GPG {
 		String outputPath = output.getAbsolutePath();
 		String inputPath = input.getAbsolutePath();
 		runGPG("--passphrase", passphrase,	"--output",	outputPath, inputPath);
+	}
+
+	/**
+	 * Decrypt inputstream to stdout.
+	 *
+	 * @param cipherText
+	 * @param passphrase
+	 * @throws IOException
+	 */
+	public InputStream decrypt(InputStream cipherText, String passphrase) throws IOException {
+		return runGPG(Arrays.asList("--passphrase", passphrase), cipherText);
 	}
 
 	public static class GPGException extends RuntimeException {
