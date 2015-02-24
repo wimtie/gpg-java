@@ -8,7 +8,7 @@ import junit.framework.TestCase;
 
 public class TestGPG extends TestCase {
 
-	public void testGenerateKeys() throws IOException {
+	public void testImportHaveKey() throws IOException {
 		GPG tool = new GPG(File.createTempFile("JUnit", "pkr"), File.createTempFile("JUnit", "skr"));
 		try (InputStream is = JUnitUtil.getResourceInputStream("pubkey.asc")) {
 			tool.importKey(is);
