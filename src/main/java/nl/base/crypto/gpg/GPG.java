@@ -107,6 +107,7 @@ public class GPG {
 	private Process getProcess(List<String> command) throws IOException {
 		GPGCommandBuilder builder = new GPGCommandBuilder();
 		builder.withFlag("--batch")
+			.withFlag("--yes")
 			.withFlag("--no-tty");
 		if (trustModel != null) {
 			builder.withOption("--trust-model", trustModel.getOption());
