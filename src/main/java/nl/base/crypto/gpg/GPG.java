@@ -130,7 +130,7 @@ public class GPG {
 	 * Run GPG
 	 *
 	 * @param command
-	 * @return InputStream with output in gpg's stdout
+	 * @return GPGOutStreams object holding cached streams of gpg's stdout and stderr output.
 	 * @throws IOException
 	 */
 	private GPGOutStreams runGPG(String... command) throws IOException {
@@ -151,13 +151,14 @@ public class GPG {
 	 *
 	 * @param command
 	 * @param data
-	 * @return InputStream with output in gpg's stdout
+	 * @return GPGOutStreams object holding cached streams of gpg's stdout and stderr output.
 	 * @throws IOException
 	 */
 	private GPGOutStreams runGPG(List<String> command, byte[] data) throws IOException {
 		Process process = getProcess(command);
 		OutputStream processStdIn = process.getOutputStream();
 		processStdIn.write(data);
+		log.debug("piped {} bytes into child process stdin", data.length);
 		processStdIn.flush();
 		processStdIn.close();
 		try {
@@ -175,7 +176,7 @@ public class GPG {
 	 *
 	 * @param command
 	 * @param data
-	 * @return InputStream with output in gpg's stdout
+	 * @return GPGOutStreams object holding cached streams of gpg's stdout and stderr output.
 	 * @throws IOException
 	 */
 	private GPGOutStreams runGPG(List<String> command, InputStream data) throws IOException {
