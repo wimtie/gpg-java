@@ -601,7 +601,7 @@ public class GPG {
 
 	}
 
-	public static final class GPGOutStreams {
+	private static final class GPGOutStreams {
 
 		private InputStream stdOut;
 		private InputStream stdErr;
