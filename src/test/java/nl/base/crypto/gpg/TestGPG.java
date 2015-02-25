@@ -44,6 +44,14 @@ public class TestGPG extends TestCase {
 				IOUtils.toString(decryptStream));
 	}
 
+	public void testEncryptDecrypt() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		String testString = "Testing testing, is this thing on?";
+		InputStream cipherText = tool.encrypt(testString.getBytes(),
+				JUNIT_KEYPAIR_FINGERPRINT);
+		assertEquals(testString, IOUtils.toString(tool.decrypt(cipherText, JUNIT_PASSPHRASE)));
+	}
+
 	public void testDeleteKey() throws IOException {
 		GPG tool = getNewJUnitGPGTool();
 		try {
@@ -76,6 +84,19 @@ public class TestGPG extends TestCase {
 		assertTrue("Not verified!", tool.verifySignature(is));
 	}
 
+	public void testSignAndVerify() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		InputStream is = tool.sign("This message wants to be signed".getBytes(),
+				JUNIT_KEYPAIR_FINGERPRINT, JUNIT_PASSPHRASE);
+		assertTrue("Verify failed on own signature.", tool.verifySignature(is));
+	}
+
+	public void testGetFingerPrint() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		assertEquals(JUNIT_KEYPAIR_FINGERPRINT,
+				tool.getFingerPrint(JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME)));
+	}
+
 	/**
 	 *
 	 * Utility method to get a GPG instance with clean keyrings.
@@ -85,7 +106,7 @@ public class TestGPG extends TestCase {
 	private GPG getNewJUnitGPGTool() {
 		try (InputStream pkis = JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME);
 				InputStream skis = JUnitUtil.getResourceInputStream(SECKEY_ASC_RESOURCE_FILENAME)) {
-			GPG tool = new GPG(File.createTempFile("JUnit", "pkr"), File.createTempFile("JUnit", "skr"));
+			GPG tool = new GPG(File.createTempFile("junit", ".pkr"), File.createTempFile("junit", ".skr"));
 			tool.importKey(pkis);
 			tool.importKey(skis);
 			return tool;
