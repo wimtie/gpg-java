@@ -65,6 +65,7 @@ public class TestGPG extends TestCase {
 		tool.deleteSecretKey(JUNIT_KEYPAIR_FINGERPRINT);
 		// Now we should be allowed to delete public key
 		tool.deletePublicKey(JUNIT_KEYPAIR_FINGERPRINT);
+		assertFalse("Still have key after delete", tool.havePublicKey(JUNIT_KEYPAIR_FINGERPRINT));
 	}
 
 	public void testSign() throws IOException {
