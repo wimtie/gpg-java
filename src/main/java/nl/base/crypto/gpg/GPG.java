@@ -95,7 +95,7 @@ public class GPG {
 	 */
 	private String checkVersionInfo() throws IOException {
 		// TODO: maybe parse output for available Algorithms
-		try (InputStream is = runGPG("--version");
+		try (InputStream is = runGPG("--version").getStdOut();
 				InputStreamReader isr = new InputStreamReader(is, Charsets.US_ASCII);
 				BufferedReader reader = new BufferedReader(isr)) {
 			return reader.readLine(); // auto-closes
@@ -133,7 +133,7 @@ public class GPG {
 	 * @return InputStream with output in gpg's stdout
 	 * @throws IOException
 	 */
-	private InputStream runGPG(String... command) throws IOException {
+	private GPGOutStreams runGPG(String... command) throws IOException {
 		Process process = getProcess(Arrays.asList(command));
 		try {
 			if (process.waitFor() != 0) {
@@ -142,7 +142,8 @@ public class GPG {
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-		return IOUtils.toBufferedInputStream(process.getInputStream());
+		return new GPGOutStreams(process.getInputStream(), process.getErrorStream());
+//		return IOUtils.toBufferedInputStream(process.getInputStream());
 	}
 
 	/**
@@ -153,7 +154,7 @@ public class GPG {
 	 * @return InputStream with output in gpg's stdout
 	 * @throws IOException
 	 */
-	private InputStream runGPG(List<String> command, byte[] data) throws IOException {
+	private GPGOutStreams runGPG(List<String> command, byte[] data) throws IOException {
 		Process process = getProcess(command);
 		OutputStream processStdIn = process.getOutputStream();
 		processStdIn.write(data);
@@ -166,7 +167,7 @@ public class GPG {
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-		return IOUtils.toBufferedInputStream(process.getInputStream());
+		return new GPGOutStreams(process.getInputStream(), process.getErrorStream());
 	}
 
 	/**
@@ -177,7 +178,7 @@ public class GPG {
 	 * @return InputStream with output in gpg's stdout
 	 * @throws IOException
 	 */
-	private InputStream runGPG(List<String> command, InputStream data) throws IOException {
+	private GPGOutStreams runGPG(List<String> command, InputStream data) throws IOException {
 		Process process = getProcess(command);
 		OutputStream processStdIn = process.getOutputStream();
 		int bytes = IOUtils.copy(data, processStdIn);
@@ -191,7 +192,7 @@ public class GPG {
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		}
-		return IOUtils.toBufferedInputStream(process.getInputStream());
+		return new GPGOutStreams(process.getInputStream(), process.getErrorStream());
 	}
 
 	/**
@@ -205,13 +206,13 @@ public class GPG {
 
 	public List<GPGKeyInfo> getPublicKeyInfoList() throws IOException {
 		ArrayList<GPGKeyInfo> res = new ArrayList<GPGKeyInfo>();
-		String rawList = IOUtils.toString(runGPG("--fingerprint"));
+		String rawList = IOUtils.toString(runGPG("--fingerprint").getStdOut());
 		return GPGKeyListParser.parse(rawList);
 	}
 
 	public List<GPGKeyInfo> getSecretKeyInfoList() throws IOException {
 		ArrayList<GPGKeyInfo> res = new ArrayList<GPGKeyInfo>();
-		String rawList = IOUtils.toString(runGPG("--list-secret-keys", "--with-fingerprint"));
+		String rawList = IOUtils.toString(runGPG("--list-secret-keys", "--with-fingerprint").getStdOut());
 		return GPGKeyListParser.parse(rawList);
 	}
 
@@ -318,7 +319,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public String getFingerPrint(File file) throws IOException {
-		String gpgOutput = IOUtils.toString(runGPG("--with-fingerprint", file.getAbsolutePath()));
+		String gpgOutput = IOUtils.toString(runGPG("--with-fingerprint", file.getAbsolutePath()).getStdOut());
 		return parseGPGOutputForFingerPrint(gpgOutput);
 	}
 
@@ -330,7 +331,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public String getFingerPrint(byte[] key) throws IOException {
-		String gpgOutput = IOUtils.toString(runGPG(Arrays.asList("--with-fingerprint"), key));
+		String gpgOutput = IOUtils.toString(runGPG(Arrays.asList("--with-fingerprint"), key).getStdOut());
 		return parseGPGOutputForFingerPrint(gpgOutput);
 	}
 
@@ -342,7 +343,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public String getFingerPrint(InputStream key) throws IOException {
-		String gpgOutput = IOUtils.toString(runGPG(Arrays.asList("--with-fingerprint"), key));
+		String gpgOutput = IOUtils.toString(runGPG(Arrays.asList("--with-fingerprint"), key).getStdOut());
 		return parseGPGOutputForFingerPrint(gpgOutput);
 	}
 
@@ -359,6 +360,105 @@ public class GPG {
 	}
 
 	/**
+	 * Signs input with specified key and appends signature to input.
+	 *
+	 * @param input
+	 * @param hexFingerPrint
+	 * @param passphrase
+	 * @return
+	 * @throws IOException
+	 */
+	public InputStream sign(File input, String hexFingerPrint, String passphrase) throws IOException {
+		//return runGPG("--passphrase", passphrase, "--sign", input.getAbsolutePath());
+		return runGPG("--fingerprint",
+				hexFingerPrint,
+				"--passphrase",
+				passphrase,
+				"--output",
+				"-",
+				"--clearsign",
+				input.getAbsolutePath()).getStdOut();
+	}
+
+	/**
+	 * Signs input with specified key and appends signature to input.
+	 *
+	 * @param input
+	 * @param hexFingerPrint
+	 * @param passphrase
+	 * @return
+	 * @throws IOException
+	 */
+	public InputStream sign(byte[] input, String hexFingerPrint, String passphrase) throws IOException {
+		//return runGPG("--passphrase", passphrase, "--sign", input.getAbsolutePath());
+		return runGPG(Arrays.asList("--passphrase", passphrase, "--output", "-", "--clearsign"), input).getStdOut();
+	}
+
+	/**
+	 * Signs input with specified key and appends signature to input.
+	 *
+	 * @param input
+	 * @param hexFingerPrint
+	 * @param passphrase
+	 * @return
+	 * @throws IOException
+	 */
+	public InputStream sign(InputStream input, String hexFingerPrint, String passphrase) throws IOException {
+		//return runGPG("--passphrase", passphrase, "--sign", input.getAbsolutePath());
+		return runGPG(Arrays.asList("--fingerprint",
+				hexFingerPrint,
+				"--passphrase",
+				passphrase,
+				"--output",
+				"-",
+				"--clearsign"), input).getStdOut();
+	}
+
+	/**
+	 *
+	 * Verify signed data.
+	 *
+	 * @param signed
+	 * @return true if the data is correctly signed with a known key, false otherwise.
+	 * @throws IOException
+	 */
+	public boolean verifySignature(InputStream signed) throws IOException {
+		// For some reason gpg outputs the result of --verify on stderr instead of stdout
+		String res = IOUtils.toString(runGPG(Arrays.asList("--verify"), signed).getStdErr());
+		log.debug("Verify output {}", res);
+		return res.contains("Good signature");
+	}
+
+	/**
+	 *
+	 * Verify signed data.
+	 *
+	 * @param signed
+	 * @return true if the data is correctly signed with a known key, false otherwise.
+	 * @throws IOException
+	 */
+	public boolean verifySignature(byte[] signed) throws IOException {
+		// For some reason gpg outputs the result of --verify on stderr instead of stdout
+		String res = IOUtils.toString(runGPG(Arrays.asList("--verify"), signed).getStdErr());
+		return res.contains("Good signature");
+	}
+
+	/**
+	 *
+	 * Verify signed data.
+	 *
+	 * @param signed
+	 * @return true if the data is correctly signed with a known key, false otherwise.
+	 * @throws IOException
+	 */
+	public boolean verifySignature(File signed) throws IOException {
+		// For some reason gpg outputs the result of --verify on stderr instead of stdout
+		String res = IOUtils.toString(runGPG("--verify", signed.getAbsolutePath()).getStdErr());
+		log.debug("Verify output {}", res);
+		return res.contains("Good signature");
+	}
+
+	/**
 	 * Encrypt contents of a file to stream.
 	 *
 	 * @param input the file to encrypt.
@@ -367,7 +467,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public InputStream encrypt(File input, String hexFingerPrint) throws IOException {
-		return runGPG("-r", hexFingerPrint, "--encrypt", "--output", "-", input.getAbsolutePath());
+		return runGPG("-r", hexFingerPrint, "--encrypt", "--output", "-", input.getAbsolutePath()).getStdOut();
 	}
 
 	/**
@@ -390,7 +490,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public InputStream encrypt(byte[] bytes, String hexFingerPrint) throws IOException {
-		return runGPG(Arrays.asList("-r", hexFingerPrint, "--encrypt", "--output", "-"), bytes);
+		return runGPG(Arrays.asList("-r", hexFingerPrint, "--encrypt", "--output", "-"), bytes).getStdOut();
 	}
 
 	/**
@@ -426,7 +526,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public InputStream decrypt(File input, String passphrase) throws IOException {
-		return runGPG("--passphrase", passphrase, "-d", input.getAbsolutePath());
+		return runGPG("--passphrase", passphrase, "-d", input.getAbsolutePath()).getStdOut();
 	}
 
 	/**
@@ -451,7 +551,7 @@ public class GPG {
 	 * @throws IOException
 	 */
 	public InputStream decrypt(InputStream cipherText, String passphrase) throws IOException {
-		return runGPG(Arrays.asList("--passphrase", passphrase), cipherText);
+		return runGPG(Arrays.asList("--passphrase", passphrase), cipherText).getStdOut();
 	}
 
 	public static class GPGException extends RuntimeException {
@@ -497,6 +597,31 @@ public class GPG {
 				sb.append(part);
 			}
 			return sb.toString();
+		}
+
+	}
+
+	public static final class GPGOutStreams {
+
+		private InputStream stdOut;
+		private InputStream stdErr;
+
+		public GPGOutStreams(InputStream gpgStdOut, InputStream gpgStdErr) {
+			// We want to cache the stream contents for now, so we don't leak open streams from a Process instance.
+			try {
+				this.stdOut = IOUtils.toBufferedInputStream(gpgStdOut);
+				this.stdErr = IOUtils.toBufferedInputStream(gpgStdErr);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		public InputStream getStdOut() {
+			return stdOut;
+		}
+
+		public InputStream getStdErr() {
+			return stdErr;
 		}
 
 	}
