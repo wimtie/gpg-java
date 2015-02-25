@@ -288,7 +288,10 @@ public class GPG {
 			// No error means we have the key.
 			return true;
 		} catch (GPGException e) {
-			// TODO: parse error msg?
+			if (!e.getMessage().contains("key not found")) {
+				// Apparently we have an unexpected error (rather than the expected one)
+				throw e;
+			}
 			return false;
 		}
 	}
@@ -307,7 +310,10 @@ public class GPG {
 			// No error means we have the key.
 			return true;
 		} catch (GPGException e) {
-			// TODO: parse error msg?
+			if (!e.getMessage().contains("key not found")) {
+				// Apparently we have an unexpected error (rather than the expected one)
+				throw e;
+			}
 			return false;
 		}
 	}
