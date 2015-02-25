@@ -31,7 +31,7 @@ public class TestGPG extends TestCase {
 		GPG tool = getNewJUnitGPGTool();
 		File cipherTmp = File.createTempFile("JUnit", ".gpg");
 		tool.encrypt(new ByteArrayInputStream("this is cleartext".getBytes()), cipherTmp,
-				getJunitKeyringFingerPrint(tool));
+				JUNIT_KEYPAIR_FINGERPRINT);
 		String actual = new String(Files.readAllBytes(cipherTmp.toPath()));
 		assertNotSame("cleartext not encrypted", "this is cleartext", actual);
 	}
@@ -47,16 +47,33 @@ public class TestGPG extends TestCase {
 	public void testDeleteKey() throws IOException {
 		GPG tool = getNewJUnitGPGTool();
 		try {
-			tool.deletePublicKey(getJunitKeyringFingerPrint(tool));
+			tool.deletePublicKey(JUNIT_KEYPAIR_FINGERPRINT);
 			throw new IllegalStateException("deletePublicKey should have thrown an error, but it didn't");
 		} catch (GPGException e) {
 			if(!e.getMessage().contains("gpg: there is a secret key for public key")) {
 				throw new IllegalStateException("Wrong exception", e);
 			}
 		}
-		tool.deleteSecretKey(getJunitKeyringFingerPrint(tool));
+		tool.deleteSecretKey(JUNIT_KEYPAIR_FINGERPRINT);
 		// Now we should be allowed to delete public key
-		tool.deletePublicKey(getJunitKeyringFingerPrint(tool));
+		tool.deletePublicKey(JUNIT_KEYPAIR_FINGERPRINT);
+	}
+
+	public void testSign() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		InputStream is = tool.sign("This message wants to be signed".getBytes(),
+				JUNIT_KEYPAIR_FINGERPRINT, JUNIT_PASSPHRASE);
+		String res = IOUtils.toString(is);
+		assertTrue("Is not a clearsigned string", res.startsWith("-----BEGIN PGP SIGNED MESSAGE-----"));
+		assertTrue("Is not our clearsigned string", res.contains("This message wants to be signed"));
+		assertTrue("Has no signature", res.contains("-----BEGIN PGP SIGNATURE-----"));
+	}
+
+	public void testVerifySignature() throws IOException {
+		GPG tool = getNewJUnitGPGTool();
+		InputStream is = JUnitUtil.getResourceInputStream("signed.gpg");
+		assertTrue("Not verified!", tool.verifySignature(new File("/tmp/signed.gpg")));
+		assertTrue("Not verified!", tool.verifySignature(is));
 	}
 
 	/**
@@ -72,14 +89,6 @@ public class TestGPG extends TestCase {
 			tool.importKey(pkis);
 			tool.importKey(skis);
 			return tool;
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private String getJunitKeyringFingerPrint(GPG gpg) {
-		try (InputStream pkis = JUnitUtil.getResourceInputStream(PUBKEY_ASC_RESOURCE_FILENAME)) {
-			return gpg.getFingerPrint(pkis);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
