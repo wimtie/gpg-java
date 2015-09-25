@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import nl.base.crypto.gpg.GPGKeyListParser.GPGKeyInfo;
-
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.base.crypto.gpg.GPGKeyListParser.GPGKeyInfo;
 
 /**
  *
@@ -464,8 +464,8 @@ public class GPG {
 		log.debug("Verify output {}", res);
 		return res.contains("Good signature");
 	}
-	
-		/**
+
+	/**
 	 *
 	 * Verify signed data, with specific fingerprint
 	 *
@@ -477,8 +477,21 @@ public class GPG {
 		// For some reason gpg outputs the result of --verify on stderr instead of stdout
 		String res = IOUtils.toString(runGPG("--verify", signed.getAbsolutePath()).getStdErr());
 		log.debug("Verify output {}", res);
-		res = res.replaceAll("\\s+","")
-		return (res.contains("Goodsignature") && res.contains(fingerprint));
+		res = res.replaceAll("\\s+","");
+		return res.contains("Goodsignature") && res.contains(hexFingerPrint);
+	}
+
+    /**
+     *
+     * Verify signed data, with specific fingerprint
+     *
+     * @param signed
+     * @return true if the data is correctly signed with a specific known key, false otherwise.
+     * @throws IOException
+     */
+	public boolean verifySignature(InputStream signed, String hexFingerPrint) throws IOException {
+	    String res = IOUtils.toString(runGPG(Arrays.asList("--verify"), signed).getStdErr());
+	    return res.contains("Goodsignature") && res.contains(hexFingerPrint);
 	}
 
 	/**

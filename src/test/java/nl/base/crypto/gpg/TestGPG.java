@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 
+import org.apache.commons.io.IOUtils;
+
 import junit.framework.TestCase;
 import nl.base.crypto.gpg.GPG.GPGException;
-
-import org.apache.commons.io.IOUtils;
 
 public class TestGPG extends TestCase {
 
@@ -83,6 +83,12 @@ public class TestGPG extends TestCase {
 		InputStream is = JUnitUtil.getResourceInputStream("signed.gpg");
 		assertTrue("Not verified!", tool.verifySignature(new File("/tmp/signed.gpg")));
 		assertTrue("Not verified!", tool.verifySignature(is));
+	}
+
+	public void testVerifySpecificSignature() throws IOException {
+	    GPG tool = getNewJUnitGPGTool();
+	    InputStream is = JUnitUtil.getResourceInputStream("signed.gpg");
+	    assertTrue("Not verified!", tool.verifySignature(is, JUNIT_KEYPAIR_FINGERPRINT));
 	}
 
 	public void testSignAndVerify() throws IOException {
