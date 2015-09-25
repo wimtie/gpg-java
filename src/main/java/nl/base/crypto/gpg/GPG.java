@@ -464,6 +464,22 @@ public class GPG {
 		log.debug("Verify output {}", res);
 		return res.contains("Good signature");
 	}
+	
+		/**
+	 *
+	 * Verify signed data, with specific fingerprint
+	 *
+	 * @param signed
+	 * @return true if the data is correctly signed with a specific known key, false otherwise.
+	 * @throws IOException
+	 */
+	public boolean verifySignature(File signed, String hexFingerPrint) throws IOException {
+		// For some reason gpg outputs the result of --verify on stderr instead of stdout
+		String res = IOUtils.toString(runGPG("--verify", signed.getAbsolutePath()).getStdErr());
+		log.debug("Verify output {}", res);
+		res = res.replaceAll("\\s+","")
+		return (res.contains("Goodsignature") && res.contains(fingerprint));
+	}
 
 	/**
 	 * Encrypt contents of a file to stream.
